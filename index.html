@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "MPPI Human Safety Cost — Interactive Explainer"
+title: "Human Safety Cost for 2D planar Robot"
 description: "Interactive visualization of the human avoidance cost function in an MPPI-based motion planner for the Kuka iiwa manipulator."
 ---
 
@@ -274,10 +274,10 @@ description: "Interactive visualization of the human avoidance cost function in 
 <body>
 
 <header class="page-header">
-  <div class="tag">MPPI · Safe Motion Planning · Kuka iiwa</div>
+  <div class="tag">MPPI · Safe Motion Planning · Planar Robot 7-dof</div>
   <h1>Human Safety Cost — J<sub>human</sub></h1>
   <p>
-    Drag the joint sliders to pose the iiwa. The cost function evaluates all
+    Drag the joint sliders to pose the planar robot. The cost function evaluates all
     14 control points (2 per link) against each human sphere and sums the
     maximum exponential proximity cost per sphere.
   </p>
@@ -378,7 +378,7 @@ description: "Interactive visualization of the human avoidance cost function in 
 
   const LINK_LENGTHS = [42, 50, 46, 50, 38, 32, 26];
 
-  // Human spheres (canvas coords)
+  
   const SPHERES = [
     {name:'Head',        cx:218, cy:72,  r:24},
     {name:'R shoulder',  cx:196, cy:124, r:17},
