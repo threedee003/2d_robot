@@ -1,0 +1,567 @@
+---
+layout: default
+title: "MPPI Human Safety Cost — Interactive Explainer"
+description: "Interactive visualization of the human avoidance cost function in an MPPI-based motion planner for the Kuka iiwa manipulator."
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MPPI Human Safety Cost Explainer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:       #0d0f14;
+      --surface:  #13161e;
+      --card:     #181c27;
+      --border:   rgba(255,255,255,0.07);
+      --accent:   #3b82f6;
+      --accent2:  #ef9f27;
+      --danger:   #d85a30;
+      --safe:     #1d9e75;
+      --text:     #e2e4ea;
+      --muted:    #7a7e8e;
+      --mono:     'JetBrains Mono', monospace;
+      --sans:     'DM Sans', sans-serif;
+      --radius:   10px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 15px;
+    }
+
+    /* ── Page header ── */
+    .page-header {
+      padding: 3rem 2rem 2rem;
+      max-width: 1100px;
+      margin: 0 auto;
+      border-bottom: 1px solid var(--border);
+    }
+    .page-header .tag {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: .6rem;
+    }
+    .page-header h1 {
+      font-size: clamp(1.4rem, 3vw, 2.1rem);
+      font-weight: 500;
+      letter-spacing: -.02em;
+      margin-bottom: .5rem;
+      color: #fff;
+    }
+    .page-header p {
+      color: var(--muted);
+      font-size: 14px;
+      max-width: 640px;
+    }
+
+    /* ── Main layout ── */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 760px) {
+      .grid { grid-template-columns: 1fr; }
+      .page-header { padding: 2rem 1.25rem 1.5rem; }
+      .container { padding: 1.25rem; }
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+    }
+
+    .card-title {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    /* ── Canvas ── */
+    canvas#iiwa {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      display: block;
+    }
+
+    /* ── Sliders ── */
+    .sliders { margin-top: 1rem; display: flex; flex-direction: column; gap: 8px; }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+    }
+
+    .slider-row label {
+      font-family: var(--mono);
+      color: var(--muted);
+      min-width: 30px;
+      font-size: 12px;
+    }
+
+    .slider-row input[type=range] {
+      -webkit-appearance: none;
+      flex: 1;
+      height: 3px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+    .slider-row input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      border: 2px solid var(--card);
+    }
+    .slider-row input[type=range]::-moz-range-thumb {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      border: 2px solid var(--card);
+    }
+
+    .slider-row .val {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text);
+      min-width: 40px;
+      text-align: right;
+    }
+
+    .slider-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 4px 0;
+    }
+
+    /* ── Legend ── */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 10px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .legend-dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── Breakdown ── */
+    .breakdown { display: flex; flex-direction: column; gap: 8px; }
+
+    .sphere-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .sphere-label { min-width: 88px; font-family: var(--mono); font-size: 11px; }
+    .bar-wrap {
+      flex: 1;
+      height: 6px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .bar { height: 100%; border-radius: 3px; transition: width .12s ease; }
+    .sphere-val {
+      min-width: 42px;
+      text-align: right;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text);
+    }
+
+    /* ── Total ── */
+    .total-box {
+      margin-top: 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--surface);
+    }
+    .total-lhs { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+    .total-val { font-size: 22px; font-weight: 500; color: #fff; }
+
+    /* ── CP detail ── */
+    .cp-detail {
+      margin-top: 14px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.9;
+    }
+    .cp-detail .inside { color: var(--danger); }
+    .cp-detail .key { color: var(--text); }
+
+    /* ── Formula box ── */
+    .formula-box {
+      margin-top: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 2;
+    }
+    .formula-box .hl { color: var(--accent2); }
+    .formula-box .sat { color: var(--danger); }
+    .formula-box .ok { color: var(--safe); }
+
+    /* ── Equation strip below ── */
+    .eq-strip {
+      margin-top: 1.5rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.4rem;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height: 2.2;
+    }
+    .eq-strip .eq { color: var(--text); }
+    .eq-strip sup { font-size: 9px; vertical-align: super; }
+    .eq-strip sub { font-size: 9px; vertical-align: sub; }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <div class="tag">MPPI · Safe Motion Planning · Kuka iiwa</div>
+  <h1>Human Safety Cost — J<sub>human</sub></h1>
+  <p>
+    Drag the joint sliders to pose the iiwa. The cost function evaluates all
+    14 control points (2 per link) against each human sphere and sums the
+    maximum exponential proximity cost per sphere.
+  </p>
+</header>
+
+<main class="container">
+  <div class="grid">
+
+    <!-- LEFT: canvas + sliders -->
+    <div>
+      <div class="card">
+        <div class="card-title">Robot configuration</div>
+        <canvas id="iiwa" width="340" height="400"></canvas>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span>Control points (2/link)</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#d85a30"></span>Human spheres</span>
+          <span class="legend-item"><span class="legend-dot" style="background:#ef9f27; border-radius:2px; width:14px; height:3px;"></span>Min-distance line</span>
+        </div>
+        <div class="sliders">
+          <div class="slider-row">
+            <label>q₁</label>
+            <input type="range" min="-150" max="150" value="20" id="q1">
+            <span class="val" id="q1v">20°</span>
+          </div>
+          <div class="slider-row">
+            <label>q₂</label>
+            <input type="range" min="-120" max="120" value="-40" id="q2">
+            <span class="val" id="q2v">-40°</span>
+          </div>
+          <div class="slider-row">
+            <label>q₃</label>
+            <input type="range" min="-150" max="150" value="15" id="q3">
+            <span class="val" id="q3v">15°</span>
+          </div>
+          <div class="slider-row">
+            <label>q₄</label>
+            <input type="range" min="-120" max="120" value="60" id="q4">
+            <span class="val" id="q4v">60°</span>
+          </div>
+          <div class="slider-divider"></div>
+          <div class="slider-row">
+            <label>α</label>
+            <input type="range" min="1" max="20" value="5" step="1" id="alpha">
+            <span class="val" id="alphav">5</span>
+          </div>
+          <div class="slider-row">
+            <label>w<sub style="font-size:9px">h</sub></label>
+            <input type="range" min="1" max="20" value="5" step="1" id="wh">
+            <span class="val" id="whv">5</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: cost breakdown -->
+    <div>
+      <div class="card">
+        <div class="card-title">Cost breakdown — J<sub>human</sub></div>
+        <div class="breakdown" id="breakdown"></div>
+        <div class="total-box">
+          <div class="total-lhs">J<sub>human</sub> = w<sub>h</sub> · Σ<sub>i</sub> max<sub>j</sub>[exp(−α·ReLU(d<sub>ij</sub>))]</div>
+          <div class="total-val" id="total">—</div>
+        </div>
+        <div class="cp-detail" id="cp-detail"></div>
+        <div class="formula-box">
+          <div><span class="hl">ReLU(d<sub>ij</sub>)</span> = max(d<sub>ij</sub>, 0)</div>
+          <div>Inside sphere: d &lt; 0 → ReLU = 0 → exp(0) = <span class="sat">1.0</span> (saturated)</div>
+          <div>At surface:  d = 0 → cost = <span class="sat">1.0</span></div>
+          <div>Outside:     d &gt; 0 → exp(−αd) ∈ (0,1), decays smoothly</div>
+          <div style="margin-top:4px">
+            <span class="hl">max<sub>j</sub></span> over 14 CPs → worst link drives cost
+          </div>
+          <div>
+            <span class="hl">Σ<sub>i</sub></span> over all spheres → no body segment ignored
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Equation strip -->
+  <div class="eq-strip">
+    <div><span class="eq">d<sub>ij</sub>(q) = ‖x<sub>j</sub>(q) − p<sub>i</sub>‖₂ − r<sub>i</sub></span>
+      &nbsp;&nbsp;→&nbsp;&nbsp; signed proximity: positive outside, zero at surface, negative inside sphere</div>
+    <div><span class="eq">J<sub>human</sub>(x<sub>t</sub>) = w<sub>h</sub> · Σ<sub>i=1</sub><sup>N<sub>h</sub></sup> max<sub>j</sub>[ exp(−α · ReLU(d<sub>ij</sub>(q))) ]</span></div>
+    <div>
+      iiwa: 7 links × 2 CPs = <span class="eq">14 control points</span>&nbsp;·&nbsp;
+      K=500 samples&nbsp;·&nbsp;T=20 horizon&nbsp;·&nbsp;N<sub>h</sub>=70 spheres&nbsp;·&nbsp;GPU: RTX 6000 Ada @ 100 Hz
+    </div>
+  </div>
+</main>
+
+<script>
+(function(){
+  const canvas = document.getElementById('iiwa');
+  const ctx    = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  const LINK_LENGTHS = [42, 50, 46, 50, 38, 32, 26];
+
+  // Human spheres (canvas coords)
+  const SPHERES = [
+    {name:'Head',        cx:218, cy:72,  r:24},
+    {name:'R shoulder',  cx:196, cy:124, r:17},
+    {name:'L shoulder',  cx:242, cy:124, r:17},
+    {name:'R elbow',     cx:190, cy:178, r:15},
+    {name:'Torso',       cx:220, cy:168, r:28},
+  ];
+
+  function getVal(id){ return parseFloat(document.getElementById(id).value); }
+
+  function fwdKin(){
+    const qs = ['q1','q2','q3','q4'].map(id => getVal(id)*Math.PI/180);
+    const base = {x:85, y:370};
+    let joints = [base];
+    let angle  = -Math.PI/2;
+    for(let i=0;i<LINK_LENGTHS.length;i++){
+      angle += (i<qs.length ? qs[i] : 0);
+      const prev = joints[joints.length-1];
+      joints.push({
+        x: prev.x + LINK_LENGTHS[i]*Math.cos(angle),
+        y: prev.y + LINK_LENGTHS[i]*Math.sin(angle)
+      });
+    }
+    return joints;
+  }
+
+  function getCP(joints){
+    let cps = [];
+    for(let i=0;i<joints.length-1;i++){
+      const a=joints[i], b=joints[i+1];
+      cps.push({x:a.x+(b.x-a.x)/3,   y:a.y+(b.y-a.y)/3,   link:i});
+      cps.push({x:a.x+(b.x-a.x)*2/3, y:a.y+(b.y-a.y)*2/3, link:i});
+    }
+    return cps;
+  }
+
+  function pxDist(p,s){ return Math.sqrt((p.x-s.cx)**2+(p.y-s.cy)**2); }
+  function pxToM(px){ return px/130; }
+
+  function computeCosts(cps){
+    const alpha=getVal('alpha'), wh=getVal('wh');
+    let results=[], minLines=[];
+    for(let i=0;i<SPHERES.length;i++){
+      const s=SPHERES[i];
+      let maxC=-Infinity, bestJ=0, bestD=0;
+      for(let j=0;j<cps.length;j++){
+        const dpx = pxDist(cps[j],s)-s.r;
+        const d   = pxToM(dpx);
+        const c   = Math.exp(-alpha*Math.max(d,0));
+        if(c>maxC){ maxC=c; bestJ=j; bestD=d; }
+      }
+      results.push({sphere:s, cost:maxC, cpIdx:bestJ, d:bestD});
+      minLines.push({from:cps[bestJ], to:{x:s.cx,y:s.cy}});
+    }
+    const total = wh*results.reduce((a,r)=>a+r.cost,0);
+    return {results, total, minLines};
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const joints = fwdKin();
+    const cps    = getCP(joints);
+    const {results, total, minLines} = computeCosts(cps);
+
+    // Human spheres
+    SPHERES.forEach(s=>{
+      ctx.beginPath();
+      ctx.arc(s.cx,s.cy,s.r,0,2*Math.PI);
+      ctx.fillStyle='rgba(216,90,48,0.15)';
+      ctx.fill();
+      ctx.strokeStyle='#d85a30';
+      ctx.lineWidth=1.5;
+      ctx.stroke();
+      ctx.fillStyle='rgba(216,90,48,0.7)';
+      ctx.font='10px JetBrains Mono, monospace';
+      ctx.fillText(s.name,s.cx+s.r+3,s.cy+4);
+    });
+
+    // Min-distance lines
+    minLines.forEach(ml=>{
+      ctx.beginPath();
+      ctx.setLineDash([4,3]);
+      ctx.strokeStyle='#ef9f27';
+      ctx.lineWidth=1;
+      ctx.moveTo(ml.from.x,ml.from.y);
+      ctx.lineTo(ml.to.x,ml.to.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+
+    // Links
+    for(let i=0;i<joints.length-1;i++){
+      ctx.beginPath();
+      ctx.strokeStyle='rgba(255,255,255,0.25)';
+      ctx.lineWidth=5;
+      ctx.lineCap='round';
+      ctx.moveTo(joints[i].x,joints[i].y);
+      ctx.lineTo(joints[i+1].x,joints[i+1].y);
+      ctx.stroke();
+      // inner highlight
+      ctx.beginPath();
+      ctx.strokeStyle='rgba(255,255,255,0.55)';
+      ctx.lineWidth=2;
+      ctx.moveTo(joints[i].x,joints[i].y);
+      ctx.lineTo(joints[i+1].x,joints[i+1].y);
+      ctx.stroke();
+    }
+
+    // Joints
+    joints.forEach((j,i)=>{
+      ctx.beginPath();
+      ctx.arc(j.x,j.y,i===0?8:5,0,2*Math.PI);
+      ctx.fillStyle='#13161e';
+      ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,0.35)';
+      ctx.lineWidth=1.5;
+      ctx.stroke();
+      if(i>0){
+        ctx.fillStyle='rgba(122,126,142,0.7)';
+        ctx.font='9px JetBrains Mono, monospace';
+        ctx.fillText('j'+i,j.x+7,j.y-5);
+      }
+    });
+
+    // Control points
+    cps.forEach((cp,idx)=>{
+      ctx.beginPath();
+      ctx.arc(cp.x,cp.y,5,0,2*Math.PI);
+      ctx.fillStyle='#3b82f6';
+      ctx.fill();
+      ctx.strokeStyle='#13161e';
+      ctx.lineWidth=1.5;
+      ctx.stroke();
+      ctx.fillStyle='rgba(59,130,246,0.8)';
+      ctx.font='8px JetBrains Mono, monospace';
+      ctx.fillText('c'+(idx+1),cp.x+7,cp.y+4);
+    });
+
+    // Breakdown panel
+    const alpha=getVal('alpha'), wh=getVal('wh');
+    const bd  = document.getElementById('breakdown');
+    const cpd = document.getElementById('cp-detail');
+    bd.innerHTML='';
+    cpd.innerHTML='';
+
+    results.forEach(r=>{
+      const pct = r.cost;
+      const col = r.d<=0 ? '#d85a30' : r.d<0.05 ? '#ef9f27' : '#3b82f6';
+      bd.innerHTML += `
+        <div class="sphere-row">
+          <span class="sphere-label">${r.sphere.name}</span>
+          <div class="bar-wrap">
+            <div class="bar" style="width:${Math.round(pct*100)}%;background:${col};"></div>
+          </div>
+          <span class="sphere-val">${r.cost.toFixed(3)}</span>
+        </div>`;
+      const dStr = r.d<=0
+        ? `<span class="inside">inside sphere</span>`
+        : `d=${r.d.toFixed(3)} m`;
+      cpd.innerHTML += `<div>
+        <span class="key">${r.sphere.name}</span>:
+        CP c${r.cpIdx+1} (link ${Math.floor(r.cpIdx/2)+1}),
+        ${dStr},
+        exp = <span class="key">${r.cost.toFixed(3)}</span>
+      </div>`;
+    });
+
+    document.getElementById('total').textContent = total.toFixed(2);
+  }
+
+  ['q1','q2','q3','q4','alpha','wh'].forEach(id=>{
+    const el = document.getElementById(id);
+    el.addEventListener('input',()=>{
+      const v=parseFloat(el.value);
+      const suf = id.startsWith('q') ? '°' : '';
+      document.getElementById(id+'v').textContent = v+suf;
+      draw();
+    });
+  });
+
+  draw();
+})();
+</script>
+
+</body>
+</html>
