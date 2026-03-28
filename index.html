@@ -269,6 +269,24 @@ description: "Interactive visualization of the human avoidance cost function in 
     .eq-strip .eq { color: var(--text); }
     .eq-strip sup { font-size: 9px; vertical-align: super; }
     .eq-strip sub { font-size: 9px; vertical-align: sub; }
+
+    /* ── Footer ── */
+    .site-footer {
+      text-align: center;
+      padding: 2rem;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      margin-top: 2rem;
+    }
+    .site-footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .site-footer a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -364,10 +382,15 @@ description: "Interactive visualization of the human avoidance cost function in 
       &nbsp;&nbsp;→&nbsp;&nbsp; signed proximity: positive outside, zero at surface, negative inside sphere</div>
     <div><span class="eq">J<sub>human</sub>(x<sub>t</sub>) = w<sub>h</sub> · Σ<sub>i=1</sub><sup>N<sub>h</sub></sup> max<sub>j</sub>[ exp(−α · ReLU(d<sub>ij</sub>(q))) ]</span></div>
     <div>
-      Devised for visualisation of human safety cost.
+      iiwa: 7 links × 2 CPs = <span class="eq">14 control points</span>&nbsp;·&nbsp;
+      K=500 samples&nbsp;·&nbsp;T=20 horizon&nbsp;·&nbsp;N<sub>h</sub>=70 spheres&nbsp;·&nbsp;GPU: RTX 6000 Ada @ 100 Hz
     </div>
   </div>
 </main>
+
+<footer class="site-footer">
+  Created by <a href="mailto:tribikram.d@outlook.com">tribikram.d@outlook.com</a>
+</footer>
 
 <script>
 (function(){
